@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<title>MOEX ANALYTICS — прототип</title>
+<style>
+:root{--bg:#0b1220;--panel:#121d2e;--panel2:#172438;--line:#28384e;--text:#e8eef7;--muted:#91a2b9;--green:#38d996;--red:#ff6b78;--blue:#70a7ff;--amber:#ffc76b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{padding:18px 16px 14px;background:linear-gradient(130deg,#14243a,#101827);border-bottom:1px solid var(--line)}
+.brand{font-size:20px;font-weight:800;letter-spacing:.7px}.brand span{color:var(--blue)}.subtitle{color:var(--muted);font-size:12px;margin-top:5px}
+main{max-width:1100px;margin:auto;padding:14px;display:grid;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.between{justify-content:space-between}
+label,.muted{color:var(--muted);font-size:12px}select,button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid #344760;border-radius:9px;padding:10px 12px}
+button{cursor:pointer}button.primary{background:#2859a8;border-color:#3977d2}button:disabled{opacity:.55}
+.price{font-size:28px;font-weight:750;margin:12px 0 4px}.positive{color:var(--green)}.negative{color:var(--red)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.metric{background:var(--panel2);border-radius:10px;padding:12px}.metric b{display:block;font-size:18px;margin-top:6px}
+h2{font-size:16px;margin:0 0 12px}.note{font-size:12px;color:var(--muted);line-height:1.5}.status{padding:10px;border-radius:9px;background:#1c2b40;font-size:13px;line-height:1.45;overflow-wrap:anywhere}.status.ok{border-left:3px solid var(--green)}.status.warn{border-left:3px solid var(--amber)}.status.err{border-left:3px solid var(--red)}
+canvas{width:100%;height:230px;display:block;background:#0d1726;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px 6px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:500}
+.small{font-size:11px;color:var(--muted)}.footer{padding:0 14px 24px;color:var(--muted);font-size:11px;line-height:1.5;max-width:1100px;margin:auto}
+@media(min-width:760px){main{grid-template-columns:1.3fr .7fr}.wide{grid-column:1/-1}.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<header><div class="brand">MOEX <span>ANALYTICS</span></div><div class="subtitle">Прототип аналитического терминала • без брокерского подключения</div></header>
+<main>
+<section class="card">
+  <div class="row between"><h2>Анализ инструмента</h2><div class="row">
+    <select id="ticker" aria-label="Выбрать акцию">
+      <option value="ROSN">Роснефть — ROSN</option><option value="SBER">Сбербанк — SBER</option><option value="GAZP">Газпром — GAZP</option><option value="LKOH">Лукойл — LKOH</option><option value="VTBR">ВТБ — VTBR</option><option value="TATN">Татнефть — TATN</option><option value="SNGSP">Сургутнефтегаз-п — SNGSP</option><option value="ALRS">АЛРОСА — ALRS</option>
+    </select><button class="primary" id="load">Загрузить данные</button>
+  </div></div>
+  <div id="quote"><div class="price">—</div><div class="muted">Котировка ещё не загружена</div></div>
+  <div style="margin-top:14px"><canvas id="chart" width="900" height="300" aria-label="График котировок"></canvas></div>
+  <div class="row between" style="margin-top:10px"><span class="small">История: дневные свечи, до 3 месяцев</span><span class="small" id="updated">Не обновлялось</span></div>
+</section>
+<section class="card">
+  <h2>Технические показатели</h2>
+  <div class="grid">
+    <div class="metric"><span class="muted">RSI (14)</span><b id="rsi">—</b><span class="small" id="rsiHint">Ожидаются данные</span></div>
+    <div class="metric"><span class="muted">SMA (20)</span><b id="sma">—</b><span class="small">Средняя цена</span></div>
+    <div class="metric"><span class="muted">MACD</span><b id="macd">—</b><span class="small">EMA(12) − EMA(26)</span></div>
+    <div class="metric"><span class="muted">Последний объём</span><b id="volume">—</b><span class="small">По последней свече</span></div>
+  </div>
+  <div style="margin-top:12px" id="status" class="status warn">Нажмите «Загрузить данные». Для получения котировок нужен доступ к серверу ISS Московской биржи из браузера.</div>
+</section>
+<section class="card wide">
+  <h2>Сводка и ограничения</h2>
+  <table><thead><tr><th>Показатель</th><th>Результат</th><th>Как читать</th></tr></thead>
+  <tbody>
+  <tr><td>Тренд</td><td id="trend">—</td><td>Сравнение последней цены со SMA(20)</td></tr>
+  <tr><td>Уровень поддержки*</td><td id="support">—</td><td>Минимум последних 20 свечей</td></tr>
+  <tr><td>Уровень сопротивления*</td><td id="resistance">—</td><td>Максимум последних 20 свечей</td></tr>
+  <tr><td>Условный сигнал</td><td id="signal">—</td><td>Простая эвристика, не прогноз и не рекомендация</td></tr>
+  </tbody></table>
+  <p class="note">* Это простые ориентиры по историческому диапазону, а не гарантированные уровни. Прототип не исполняет сделки и не учитывает комиссии, проскальзывание и корпоративные события.</p>
+</section>
+<section class="card wide">
+  <h2>Список инструментов</h2><div class="note">Выберите акцию выше и нажмите «Загрузить данные». Список ниже предназначен для быстрого перехода.</div>
+  <div class="row" style="margin-top:12px" id="quick"></div>
+</section>
+</main>
+<div class="footer">Данные должны загружаться напрямую из ISS Московской биржи. Если запрос заблокирован браузером, сетью или политикой CORS, приложение честно покажет ошибку и не подставит фиктивные цены. Это начальный локальный прототип; для регулярного фонового мониторинга понадобится отдельный сервер.</div>
+<script>
+const $=id=>document.getElementById(id);
+const tickerNames={ROSN:"Роснефть",SBER:"Сбербанк",GAZP:"Газпром",LKOH:"Лукойл",VTBR:"ВТБ",TATN:"Татнефть",SNGSP:"Сургутнефтегаз-п",ALRS:"АЛРОСА"};
+function fmt(x,d=2){return Number.isFinite(x)?x.toLocaleString('ru-RU',{maximumFractionDigits:d,minimumFractionDigits:d}):"—"}
+function drawEmpty(msg){const c=$('chart'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#91a2b9';ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText(msg,c.width/2,c.height/2)}
+function drawChart(rows){const c=$('chart'),ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);if(!rows.length){drawEmpty('Нет доступных свечей');return}
+const vals=rows.flatMap(r=>[r.low,r.high]),min=Math.min(...vals),max=Math.max(...vals),pad=(max-min)*.08||1,lo=min-pad,hi=max+pad;
+ctx.strokeStyle='#28384e';ctx.lineWidth=1;ctx.fillStyle='#91a2b9';ctx.font='12px sans-serif';for(let i=0;i<5;i++){let y=20+i*(h-40)/4;ctx.beginPath();ctx.moveTo(45,y);ctx.lineTo(w-8,y);ctx.stroke();let v=hi-i*(hi-lo)/4;ctx.textAlign='right';ctx.fillText(fmt(v),40,y+4)}
+let step=(w-65)/rows.length,cw=Math.max(2,Math.min(10,step*.58));rows.forEach((r,i)=>{let x=48+i*step+step/2,Y=v=>20+(hi-v)/(hi-lo)*(h-40);ctx.strokeStyle=r.close>=r.open?'#38d996':'#ff6b78';ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.moveTo(x,Y(r.high));ctx.lineTo(x,Y(r.low));ctx.stroke();let top=Y(Math.max(r.open,r.close)),bot=Y(Math.min(r.open,r.close));ctx.fillRect(x-cw/2,top,cw,Math.max(1,bot-top))})}
+function ema(vals,period){let k=2/(period+1),out=[];vals.forEach((v,i)=>out.push(i===0?v:v*k+out[i-1]*(1-k)));return out}
+function rsi(vals,n=14){if(vals.length<=n)return NaN;let g=0,l=0;for(let i=vals.length-n;i<vals.length;i++){let d=vals[i]-vals[i-1];if(d>0)g+=d;else l-=d}if(l===0)return 100;return 100-100/(1+(g/n)/(l/n))}
+function setStatus(text,kind='warn'){$('status').className='status '+kind;$('status').textContent=text}
+async function load(){const sec=$('ticker').value; $('load').disabled=true;setStatus('Запрашиваем исторические свечи ISS Московской биржи…');try{
+const end=new Date(),start=new Date();start.setDate(start.getDate()-100);
+const url=`https://iss.moex.com/iss/engines/stock/markets/shares/securities/${encodeURIComponent(sec)}/candles.json?from=${start.toISOString().slice(0,10)}&till=${end.toISOString().slice(0,10)}&interval=24&iss.meta=off`;
+const res=await fetch(url,{headers:{Accept:'application/json'}});if(!res.ok)throw new Error('Сервер ISS ответил HTTP '+res.status);
+const data=await res.json(),block=data.candles;if(!block||!block.columns||!block.data||!block.data.length)throw new Error('ISS не вернул дневные свечи для '+sec);
+const ix=Object.fromEntries(block.columns.map((c,i)=>[c,i]));
+const rows=block.data.map(a=>({begin:a[ix.begin],open:+a[ix.open],close:+a[ix.close],high:+a[ix.high],low:+a[ix.low],volume:+a[ix.volume]})).filter(r=>[r.open,r.close,r.high,r.low].every(Number.isFinite));
+if(!rows.length)throw new Error('В ответе нет корректных цен');const last=rows.at(-1),closes=rows.map(r=>r.close),avg=closes.slice(-20).reduce((a,b)=>a+b,0)/Math.min(20,closes.length),rv=rsi(closes),e12=ema(closes,12),e26=ema(closes,26),m=e12.at(-1)-e26.at(-1),recent=rows.slice(-20),support=Math.min(...recent.map(r=>r.low)),resistance=Math.max(...recent.map(r=>r.high));
+$('quote').innerHTML=`<div class="price">${fmt(last.close)} <span class="muted" style="font-size:13px">RUB • ${sec}</span></div><div class="${last.close>=last.open?'positive':'negative'}">${tickerNames[sec]} • последняя доступная дневная свеча: ${last.begin}</div>`;
+$('rsi').textContent=fmt(rv,1);$('rsiHint').textContent=rv>=70?'Высокая зона RSI':rv<=30?'Низкая зона RSI':'Средняя зона RSI';
+$('sma').textContent=fmt(avg);$('macd').textContent=fmt(m);$('volume').textContent=Number.isFinite(last.volume)?Math.round(last.volume).toLocaleString('ru-RU'):'—';
+$('trend').textContent=last.close>avg?'Цена выше SMA(20)':last.close<avg?'Цена ниже SMA(20)':'Цена около SMA(20)';
+$('support').textContent=fmt(support);$('resistance').textContent=fmt(resistance);
+let sig='Нейтрально';if(rv<30&&last.close>last.open)sig='Возможный отскок — проверить подтверждение';else if(rv>70&&last.close<last.open)sig='Повышенный риск коррекции';else if(last.close>avg&&m>0)sig='Положительный импульс по простым критериям';else if(last.close<avg&&m<0)sig='Отрицательный импульс по простым критериям';$('signal').textContent=sig;
+drawChart(rows.slice(-60));$('updated').textContent='Получено: '+new Date().toLocaleString('ru-RU');setStatus(`Получено ${rows.length} дневных свечей из ISS MOEX. Последняя свеча: ${last.begin}. Это историческая дневная свеча, не обязательно текущая цена в реальном времени.`,'ok');
+}catch(e){setStatus('Не удалось загрузить реальные котировки: '+e.message+'. Возможные причины: сеть, ограничения браузера/CORS или отсутствие данных. Попробуйте открыть файл в другом браузере или позже. Фиктивные котировки не показываются.','err');drawEmpty('Реальные данные не загружены');$('quote').innerHTML='<div class="price">—</div><div class="muted">Нет подтверждённой котировки</div>';['rsi','sma','macd','volume','trend','support','resistance','signal'].forEach(id=>$(id).textContent='—')}
+finally{$('load').disabled=false}}
+$('load').addEventListener('click',load);$('ticker').addEventListener('change',()=>{setStatus('Инструмент выбран. Нажмите «Загрузить данные».');});Object.keys(tickerNames).forEach(sec=>{const b=document.createElement('button');b.textContent=sec;b.addEventListener('click',()=>{$('ticker').value=sec;load()});$('quick').appendChild(b)});drawEmpty('Нажмите «Загрузить данные»');
+</script>
+</body></html>
